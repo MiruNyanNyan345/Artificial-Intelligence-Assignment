@@ -4,6 +4,7 @@ import math
 import time
 
 
+# evaluate the accuracy
 def accuracy_metric(true_y, pred_y):
     correct = 0
     if len(true_y) != len(pred_y):
@@ -14,6 +15,7 @@ def accuracy_metric(true_y, pred_y):
     return correct / float(len(true_y)) * 100.0
 
 
+# removing low tf-idf word from each sentence according to its label class in tf-idf
 def preprocess(tfidf, dataset):
     newDataset = dataset
     for idx, row in enumerate(newDataset):
@@ -21,14 +23,13 @@ def preprocess(tfidf, dataset):
         label = row[2]
         words = sentence.split(" ")
         newDataset[idx][3] = ' '.join(w for w in [word for word in words if word in tfidf[label].keys()])
-        # print("difference - origin: {}, new: {}".format(len(sentence), len(newDataset[idx][3])))
-        # if len(sentence) == len(newDataset[idx][3]):
-        #     print(sentence)
-        #     print(newDataset[idx][3])
-
     return newDataset
 
 
+# reading tsv file and save it in list
+# remove punctuation
+# remove digits
+# transfer to lowercase
 def read_tsv(tsv_file, data_type):
     tsv_lst = []
     with open(tsv_file) as f:
@@ -50,75 +51,106 @@ def read_tsv(tsv_file, data_type):
     return tsv_lst
 
 
+# Calculate each label class' TF-IDF of dataset
 class FeatureSelection(object):
     def __init__(self):
-        # self.wordDict = {}
+        # categories of label
         self.allClass = ["positive", "negative", "neutral"]
+        # bag of word stored in dictionary
         self.bowDict = {"positive": [], "negative": [], "neutral": []}
+        # using set to store unique words of dataset
         self.uniqueWords = set()
+        # counting amount of words
         self.numOfWordsDict = {}
 
+        # storing each class tf, idf, tf-idf in dictionary
         self.tf = {"positive": {}, "negative": {}, "neutral": {}}
         self.idf = {"positive": {}, "negative": {}, "neutral": {}}
         self.tfidf = {"positive": {}, "negative": {}, "neutral": {}}
 
+    #################################################################################################################
+    # The TF-IDF value increases proportionally to the number of times a word appears in the document and is offset #
+    # by the number of documents in the corpus that contain the word, which helps to adjust for the fact that some  #
+    # words appear more frequently in general.                                                                      #
+    #################################################################################################################
+
+    # calculating TF (term frequency)
     def computeTF(self):
         tfDict = {"positive": {}, "negative": {}, "neutral": {}}
         for c in self.allClass:
+            # count of the category of bag of word
             bow_count = len(self.bowDict[c])
+            # calculate word TF of each class
             for word, count in self.numOfWordsDict[c].items():
+                # the number of times a word appears in a document divided by the total number of words in the document
                 tfDict[c][word] = count / float(bow_count)
         return tfDict
 
+    # calculating IDF (inverse document frequency)
     def computeIDF(self, docs):
+        # length of all sentences
         N = len(docs)
+        # initialize the dictionary of IDF
         idfDict = dict.fromkeys(docs[0].keys(), 0)
         for doc in docs:
             for word, val in doc.items():
                 if val > 0:
                     idfDict[word] += 1
+
         for word, val in idfDict.items():
+            # the log of the number of documents divided by the number of documents that contains the "word"
             idfDict[word] = math.log(N / float(val))
 
         return idfDict
 
+    # calculating TF-IDF
     def computeTFIDF(self, dataset, n):
+        # storing sentences of each label class
         sentencesDict = {"positive": [row[3] for row in dataset if row[2] == "positive"],
                          "negative": [row[3] for row in dataset if row[2] == "negative"],
                          "neutral": [row[3] for row in dataset if row[2] == "neutral"]}
+        # splitting words of sentences in bag of word
         for c in self.allClass:
             for sent in sentencesDict[c]:
                 for word in sent.split(" "):
                     self.bowDict[c].append(word)
 
+        # getting unique words of whole dataset
         self.uniqueWords = set().union(self.bowDict["positive"], self.bowDict["negative"], self.bowDict["neutral"])
 
+        # initialize the number of words dictionary
         self.numOfWordsDict = {"positive": dict.fromkeys(self.uniqueWords, 0),
                                "negative": dict.fromkeys(self.uniqueWords, 0),
                                "neutral": dict.fromkeys(self.uniqueWords, 0)}
+        # counting word frequency of each label
         for c in self.allClass:
             for word in self.bowDict[c]:
                 if word in self.uniqueWords:
                     self.numOfWordsDict[c][word] += 1
-
+        # get TF
         self.tf = self.computeTF()
+        # get IDF
         self.idf = self.computeIDF(docs=[self.numOfWordsDict[c] for c in self.allClass])
+        # get TF-IDF
         for c in self.allClass:
             for word, val in self.tf[c].items():
                 self.tfidf[c][word] = val * self.idf[word]
 
+        # return top N TF-IDF word of each label class
         filteredTFIDF = {}
         for cls in self.tfidf.keys():
             filteredTFIDF[cls] = dict(list(
                 {k: v for k, v in sorted(self.tfidf[cls].items(), key=lambda item: item[1], reverse=True)
                  if v > 0}.items())[:n])
-        # for cls in self.tfidf.keys():
-        #     print("Class: {} --- {}".format(cls, filteredTFIDF[cls]))
 
-        # return self.tfidf
         return filteredTFIDF
 
 
+##########################################################################################################
+# Multinomial NB = Multivariate NB, Multinomial Naive Bayes consider a feature vector where a given term #
+# represents the number of times it appears or very often i.e. frequency.                                #
+##########################################################################################################
+# Multinomial Naive Bayes Classifier
 class NaiveBayesClassifiers(object):
     def __init__(self):
         self.logPrior = {}
@@ -130,6 +162,7 @@ class NaiveBayesClassifiers(object):
         self.all_classes = set()
         self.tfidf = {}
 
+    # splitting words of all sentences
     def compute_vocab(self, sentences):
         vocabs = set()
         for s in sentences:
@@ -137,52 +170,63 @@ class NaiveBayesClassifiers(object):
                 vocabs.add(w)
         self.vocab = vocabs
 
+    # counting each word in class
     def count_word_in_class(self):
-        self.wordCount = {"positive": dict.fromkeys(self.vocab, 0), "negative": dict.fromkeys(self.vocab, 0),
+        self.wordCount = {"positive": dict.fromkeys(self.vocab, 0),
+                          "negative": dict.fromkeys(self.vocab, 0),
                           "neutral": dict.fromkeys(self.vocab, 0)}
         for c in self.wordCount.keys():
             docs = self.docs[c]
             for doc in docs:
                 for word in doc.split(" "):
-                    # if word in self.tfidf[c].keys():
                     if word in self.vocab:
                         self.wordCount[c][word] += 1
 
-    # alpha ~ smoothing
+    # training task
     def train(self, dataset, alpha, tfidf):
         self.tfidf = tfidf
+        # size of dataset
         num_doc = len(dataset)
 
+        # get sentences and sentiments' labels from dataset
         sentences = [row[3] for row in dataset]
         sentiments = [row[2] for row in dataset]
+
+        # get all categories from dataset's label
         self.all_classes = set(sentiments)
 
+        # splitting word of all sentences
         self.compute_vocab(sentences)
-        # newVocab = set()
-        # for k, v in self.tfidf.items():
-        #     for nested_key in self.tfidf[k].keys():
-        #         newVocab.add(nested_key)
-        # self.vocab = newVocab
 
         # according each class to append sentences
         for s, c in zip(sentences, sentiments):
             self.docs[c].append(s)
 
+        # counting word in class
         self.count_word_in_class()
 
         for c in self.all_classes:
             num_class = float(sentiments.count(c))
+            # calculating the log prior probability
+            # used for the prediction
+            # counts of that class/number of documents
             self.logPrior[c] = math.log(num_class / num_doc)
+
+            # word amount in current category
             total_count = 0
             for word in self.vocab:
                 if word in self.wordCount[c].keys():
                     total_count += self.wordCount[c][word]
 
+            # calculate log likelihoods of the word in current class
+            # used for the prediction
             for word in self.vocab:
-                # if word in self.tfidf[c].keys():
                 count = self.wordCount[c][word]
+                # log ( (frequency of word in current class + alpha) /
+                # (word amount in current category + (alpha * word amount in whole dataset)) )
                 self.logLikelihoods[c][word] = math.log((count + alpha) / (total_count + (alpha * len(self.vocab))))
 
+    # sentiments of sentence prediction
     def predict(self, dataset):
         predictions = []
         sentences = [row[3] for row in dataset]
@@ -193,8 +237,11 @@ class NaiveBayesClassifiers(object):
                 sums[c] = self.logPrior[c]
                 words = sent.split(" ")
                 for word in words:
+                    # if the word appear in the training vocab list
                     if word in self.vocab:
+                        # sum the log likelihoods of words of given sentences
                         sums[c] += self.logLikelihoods[c][word]
+            # get the maximum posterior probability class
             predictions.append(max(sums, key=sums.get))
         return predictions
 
@@ -227,7 +274,9 @@ def main(alpha, n):
 
 if __name__ == '__main__':
     start = time.time()
+    # alpha - prevent zero counting (smoothing)
     alpha = [0.001]
+    # top N tf-idf words in that class will be used for training and prediction
     N = [9000]
     for a in alpha:
         for n in N:
