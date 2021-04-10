@@ -20,7 +20,7 @@
 
 🌟 Type "ctrl + c" to stop the program
 
-![Alt Text](demoQ2.gif)
+![Alt Text](https://s4.gifyu.com/images/demoQ2.gif)
 
 
 ## Question 3
