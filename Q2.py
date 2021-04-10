@@ -35,7 +35,12 @@ def preprocess(tfidf, dataset):
 def read_tsv(tsv_file, data_type):
     tsv_lst = []
     with open(tsv_file) as f:
-        lines = f.read().split('\n')[:-1]
+        lines = f.read().split('\n')
+        # some dataset last line is blank
+        if len(lines[-1]) < 4:
+            lines = lines[:-1]
+
+        print(len(lines))
         if data_type == "test":
             for line in lines:
                 tsv_lst.append([line.split('\t')[0],
@@ -281,8 +286,10 @@ def main(alpha, n, output_file, test_dataset):
 
     testPredictionLabel = NBClassifier.predict(test_tsv, True)
     with open(output_file, "w") as f:
+        print(len(test_tsv))
+        print(len(testPredictionLabel))
         for output in testPredictionLabel:
-            f.writelines(output + "\n")
+            f.write(output + "\n")
 
 
 if __name__ == '__main__':
@@ -306,7 +313,7 @@ if __name__ == '__main__':
                         #     for n in N:
                         #         main(a, n, test_dataset=test_filepath)
                         start = time.time()
-                        main(alpha=alpha, n=N, output_file="Q2_Output.tsv", test_dataset=test_filepath)
+                        main(alpha=alpha, n=N, output_file="prediction.tsv", test_dataset=test_filepath)
                         end = time.time()
                         print("Finished ~ Running Time: {} \n".format(end - start))
                         # break
