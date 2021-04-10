@@ -39,8 +39,6 @@ def read_tsv(tsv_file, data_type):
         # some dataset last line is blank
         if len(lines[-1]) < 4:
             lines = lines[:-1]
-
-        print(len(lines))
         if data_type == "test":
             for line in lines:
                 tsv_lst.append([line.split('\t')[0],
@@ -286,8 +284,6 @@ def main(alpha, n, output_file, test_dataset):
 
     testPredictionLabel = NBClassifier.predict(test_tsv, True)
     with open(output_file, "w") as f:
-        print(len(test_tsv))
-        print(len(testPredictionLabel))
         for output in testPredictionLabel:
             f.write(output + "\n")
 
