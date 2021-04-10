@@ -2,6 +2,8 @@ import string
 from string import digits
 import math
 import time
+import sys
+import os
 
 
 # evaluate the accuracy
@@ -45,9 +47,10 @@ def read_tsv(tsv_file, data_type):
                 tsv_lst.append([line.split('\t')[0],
                                 line.split('\t')[1],
                                 line.split('\t')[2],
-                                line.split('\t')[3].translate(str.maketrans('', '', string.punctuation)).translate(
-                                    str.maketrans('', '', digits)).lower()])
-
+                                line.split('\t')[3]
+                               .translate(str.maketrans('', '', string.punctuation))
+                               .translate(str.maketrans('', '', digits)).lower()
+                                ])
     return tsv_lst
 
 
@@ -145,11 +148,12 @@ class FeatureSelection(object):
 
         return filteredTFIDF
 
+    ##########################################################################################################
+    # Multinomial NB = Multivariate NB, Multinomial Naive Bayes consider a feature vector where a given term #
+    # represents the number of times it appears or very often i.e. frequency.                                #
+    ##########################################################################################################
 
-##########################################################################################################
-# Multinomial NB = Multivariate NB, Multinomial Naive Bayes consider a feature vector where a given term #
-# represents the number of times it appears or very often i.e. frequency.                                #
-##########################################################################################################
+
 # Multinomial Naive Bayes Classifier
 class NaiveBayesClassifiers(object):
     def __init__(self):
@@ -227,9 +231,12 @@ class NaiveBayesClassifiers(object):
                 self.logLikelihoods[c][word] = math.log((count + alpha) / (total_count + (alpha * len(self.vocab))))
 
     # sentiments of sentence prediction
-    def predict(self, dataset):
+    def predict(self, dataset, test):
         predictions = []
-        sentences = [row[3] for row in dataset]
+        if test:
+            sentences = [row[2] for row in dataset]
+        else:
+            sentences = [row[3] for row in dataset]
 
         for sent in sentences:
             sums = {"positive": 0, "negative": 0, "neutral": 0}
@@ -246,11 +253,12 @@ class NaiveBayesClassifiers(object):
         return predictions
 
 
-def main(alpha, n):
+def main(alpha, n, output_file, test_dataset):
     # reading dataset
     train_tsv = read_tsv("./Assignment Data/Q2/Train.tsv", "train")
     val_tsv = read_tsv("./Assignment Data/Q2/Valid.tsv", "val")
-    test_tsv = read_tsv("./Assignment Data/Q2//Test.tsv", "test")
+    # test_tsv = read_tsv("./Assignment Data/Q2/Test.tsv", "test")
+    test_tsv = read_tsv(test_dataset, "test")
 
     featureSelect = FeatureSelection()
     tfidf = featureSelect.computeTFIDF(train_tsv, n)
@@ -263,24 +271,46 @@ def main(alpha, n):
     print("Alpha: {}".format(alpha))
     print("N word of TF-IDF: {}".format(n))
 
-    predictionLabel = NBClassifier.predict(train_tsv)
+    predictionLabel = NBClassifier.predict(train_tsv, False)
     trueLabel = [i[2] for i in train_tsv]
     print("Training Data Accuracy: {}".format(accuracy_metric(trueLabel, predictionLabel)))
 
-    predictionLabel = NBClassifier.predict(val_tsv)
+    predictionLabel = NBClassifier.predict(val_tsv, False)
     trueLabel = [i[2] for i in val_tsv]
     print("Validation Data Accuracy: {}".format(accuracy_metric(trueLabel, predictionLabel)))
 
+    testPredictionLabel = NBClassifier.predict(test_tsv, True)
+    with open(output_file, "w") as f:
+        for output in testPredictionLabel:
+            f.writelines(output + "\n")
+
 
 if __name__ == '__main__':
-    start = time.time()
-    # alpha - prevent zero counting (smoothing)
-    alpha = [0.001]
-    # top N tf-idf words in that class will be used for training and prediction
-    N = [9000]
-    for a in alpha:
-        for n in N:
-            main(a, n)
-            print("")
-    end = time.time()
-    print("Running Time: {}".format(end - start))
+    try:
+        while True:
+            test_filepath = input("Please input the path of testing dataset: ")
+            # alpha - preventn zero counting (smoothing)
+            alpha = float(input("Please input the training alpha for smoothing: "))
+            if alpha <= 0:
+                print("Alpha must be greater than 0, please try another value")
+            else:
+                # top N tf-idf words in that class will be used for training and prediction
+                N = int(input("Pick top N words for training: "))
+                if N <= 0:
+                    print("N must be greater than 0, please try another value:")
+                else:
+                    if os.path.isfile(test_filepath):
+                        # alpha = [0.001]
+                        # N = [9000]
+                        # for a in alpha:
+                        #     for n in N:
+                        #         main(a, n, test_dataset=test_filepath)
+                        start = time.time()
+                        main(alpha=alpha, n=N, output_file="Q2_Output.tsv", test_dataset=test_filepath)
+                        end = time.time()
+                        print("Finished ~ Running Time: {} \n".format(end - start))
+                        # break
+                    else:
+                        print("The file is not exist")
+    except Exception as e:
+        print(e)
