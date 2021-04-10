@@ -20,8 +20,7 @@
 
 🌟 Type "ctrl + c" to stop the program
 
-![Screenshot](https://s4.gifyu.com/images/demoQ2.gif)
-
+[![demoQ2.th.gif](https://s4.gifyu.com/images/demoQ2.th.gif)](https://gifyu.com/image/r2gd)
 
 
 
