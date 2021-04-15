@@ -27,4 +27,5 @@
 
 ## Question 3
 
-* Using jupyter notebook to open it
+1. Using jupyter notebook to open it
+2. Run the whole program from top to bottom
