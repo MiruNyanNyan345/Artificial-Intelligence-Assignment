@@ -1,4 +1,4 @@
-# COMP5511-Assignment
+# Artificial Intelligence Assignment
 
 ## Question 1
 
