@@ -1,6 +1,9 @@
 # Artificial Intelligence Concept
 ## COMP5511 Assignment
 
+## Challenges
+This assignment consists of three quesitons about the traditional machine learning and artifical intelligence model and algorithm, however, the requirements of these three question have indicated that the student cannot implement the model and algorithm by any external library (e.g., NumPy and Pandas). It is the most challenging task in this assignment. Especially in the question 2, it requires the student to implement a bayesian classifier to classify the text data. Apart from the prediction, the most difficult part is to optimize the model without the help from the strong library (e.g, nltk). 
+
 ## Question 1
 
 1. open terminal and go to this file
